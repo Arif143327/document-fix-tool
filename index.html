@@ -2,93 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Passport Photo Maker</title>
-<style>
-  body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 20px; text-align:center; }
-  h1 { color: #2e7d32; }
-  input, select, button { padding: 10px; margin: 10px 0; font-size:16px; }
-  canvas { border: 1px solid #ccc; margin-top: 20px; }
-</style>
+<title>Professional Passport & Aadhaar Photo Tool</title>
+<link rel="stylesheet" href="style.css">
+
+<!-- Cropper.js -->
+<link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css"/>
+<script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
+
+<!-- Face API -->
+<script defer src="https://unpkg.com/face-api.js"></script>
 </head>
+
 <body>
+<h1>Passport / Aadhaar Photo Maker</h1>
 
-<h1>Passport Photo Maker</h1>
+<input type="file" id="upload" accept="image/*">
 
-<input type="file" id="photoInput" accept="image/*"><br>
-<label>Number of Photos:</label>
-<select id="numPhotos">
-  <option value="2">2</option>
-  <option value="4" selected>4</option>
-  <option value="6">6</option>
-</select><br>
-<button onclick="generateSheet()">Generate Sheet</button>
-<button onclick="downloadSheet()">Download PDF</button>
+<div class="controls">
+<select id="photoCount">
+  <option value="2">2 Photos</option>
+  <option value="4" selected>4 Photos</option>
+  <option value="6">6 Photos</option>
+  <option value="8">8 Photos</option>
+</select>
 
-<canvas id="canvas"></canvas>
+<button onclick="autoCrop()">Auto Crop</button>
+<button onclick="manualCrop()">Manual Crop</button>
+<button onclick="generateA4()">Generate A4 Sheet</button>
+<button onclick="downloadPDF()">Download PDF</button>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
-<script>
-let uploadedImage = null;
+<img id="image" hidden>
+<canvas id="sheet"></canvas>
 
-document.getElementById('photoInput').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    uploadedImage = new Image();
-    uploadedImage.onload = function() {
-      drawSheet();
-    }
-    uploadedImage.src = event.target.result;
-  }
-  reader.readAsDataURL(file);
-});
-
-function generateSheet() {
-  if(!uploadedImage) { alert('Please upload a photo first!'); return; }
-  drawSheet();
-}
-
-function drawSheet() {
-  const num = parseInt(document.getElementById('numPhotos').value);
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  
-  const cols = Math.ceil(Math.sqrt(num));
-  const rows = Math.ceil(num / cols);
-  const photoSize = 200; // Each photo 200x200 px
-
-  canvas.width = cols * photoSize + 20;
-  canvas.height = rows * photoSize + 20;
-  
-  ctx.fillStyle = "white";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  let count = 0;
-  for(let r=0; r<rows; r++){
-    for(let c=0; c<cols; c++){
-      if(count>=num) break;
-      // Draw the uploaded image centered
-      ctx.drawImage(uploadedImage, 0, 0, uploadedImage.width, uploadedImage.height,
-        c*photoSize + 10, r*photoSize + 10, photoSize, photoSize);
-      count++;
-    }
-  }
-}
-
-function downloadSheet() {
-  const canvas = document.getElementById('canvas');
-  const imgData = canvas.toDataURL('image/jpeg', 1.0);
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'px',
-    format: [canvas.width, canvas.height]
-  });
-  pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-  pdf.save('passport_photos.pdf');
-}
-</script>
-
+<script src="script.js"></script>
 </body>
 </html>
