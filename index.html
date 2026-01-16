@@ -1,75 +1,102 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<meta charset="UTF-8">
-<title>Document Fix Tool</title>
+  <meta charset="UTF-8">
+  <title>Document Front & Back Fix Tool</title>
 
-<link href="https://unpkg.com/cropperjs/dist/cropper.css" rel="stylesheet"/>
-<script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
-
-<style>
-body{
-  font-family: Arial, sans-serif;
-  background:#f2f2f2;
-  padding:15px;
-}
-.card{
-  background:#ffffff;
-  padding:15px;
-  margin-bottom:15px;
-  border-radius:8px;
-}
-h2,h3{
-  margin:5px 0;
-}
-img{
-  max-width:100%;
-  display:none;
-}
-.note{
-  font-size:12px;
-  color:green;
-}
-</style>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 20px;
+    }
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      max-width: 420px;
+      margin: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: green;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    canvas {
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
 
-<h2>Document Front & Back Fix Tool</h2>
-<p class="note">Note: Photo save nahi hoti, sirf processing hoti hai</p>
+  <div class="card">
+    <h2>Document Front & Back Fix Tool</h2>
+    <p style="font-size:13px;color:gray">
+      Note: Photo save nahi hoti, sirf processing hoti hai
+    </p>
 
-<div class="card">
-  <h3>Front Side Upload</h3>
-  <input type="file" id="frontInput">
-  <img id="frontImg">
-</div>
+    <label>Front Side Upload</label>
+    <input type="file" id="front" accept="image/*">
 
-<div class="card">
-  <h3>Back Side Upload</h3>
-  <input type="file" id="backInput">
-  <img id="backImg">
-</div>
+    <label>Back Side Upload</label>
+    <input type="file" id="back" accept="image/*">
+
+    <button onclick="processImage()">PROCESS & DOWNLOAD</button>
+  </div>
+
+  <canvas id="canvas"></canvas>
 
 <script>
-function setupCrop(inputId, imgId){
-  const input = document.getElementById(inputId);
-  const img = document.getElementById(imgId);
-  let cropper;
+function processImage() {
+  const front = document.getElementById("front").files[0];
+  const back = document.getElementById("back").files[0];
 
-  input.addEventListener("change", function(e){
-    img.style.display = "block";
-    img.src = URL.createObjectURL(e.target.files[0]);
-    if(cropper) cropper.destroy();
-    cropper = new Cropper(img,{
-      aspectRatio: 1.6,
-      viewMode: 1
-    });
-  });
+  if (!front || !back) {
+    alert("Dono photo select karo");
+    return;
+  }
+
+  const img1 = new Image();
+  const img2 = new Image();
+
+  img1.onload = () => {
+    img2.onload = () => {
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const width = Math.max(img1.width, img2.width);
+      const height = img1.height + img2.height;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.drawImage(img1, 0, 0);
+      ctx.drawImage(img2, 0, img1.height);
+
+      const link = document.createElement("a");
+      link.download = "document_front_back.jpg";
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    };
+    img2.src = URL.createObjectURL(back);
+  };
+  img1.src = URL.createObjectURL(front);
 }
-
-setupCrop("frontInput","frontImg");
-setupCrop("backInput","backImg");
-</script>
-
-</body>
-</html>
+</script
