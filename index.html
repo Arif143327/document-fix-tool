@@ -1,195 +1,94 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>All-in-One Document Tool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Passport Photo Maker</title>
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f2f2f2;
-  padding: 15px;
-}
-.card {
-  background: #ffffff;
-  padding: 15px;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-h2 { margin: 5px 0; }
-button { 
-  padding: 10px 15px; 
-  margin: 5px 0; 
-  cursor: pointer;
-  border-radius: 5px;
-  border: none;
-  background: #4CAF50; 
-  color: white;
-  font-weight: bold;
-}
-input[type="file"] { margin: 5px 0; }
-canvas { display:none; }
+  body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 20px; text-align:center; }
+  h1 { color: #2e7d32; }
+  input, select, button { padding: 10px; margin: 10px 0; font-size:16px; }
+  canvas { border: 1px solid #ccc; margin-top: 20px; }
 </style>
 </head>
 <body>
 
-<h1>All-in-One Document Tool</h1>
+<h1>Passport Photo Maker</h1>
 
-<!-- 1️⃣ Document Front & Back Fix -->
-<div class="card">
-  <h2>Document Front & Back Fix</h2>
-  <input type="file" id="front" accept="image/*"><br>
-  <input type="file" id="back" accept="image/*"><br>
-  <button onclick="processFrontBack()">Process & Download</button>
-</div>
-
-<!-- 2️⃣ Passport Size Photo -->
-<div class="card">
-  <h2>Passport Size Photo</h2>
-  <input type="file" id="passportPhoto" accept="image/*"><br>
-  <button onclick="generatePassport()">Generate & Download</button>
-</div>
-
-<!-- 3️⃣ PDF → JPG -->
-<div class="card">
-  <h2>PDF to JPG</h2>
-  <input type="file" id="pdfFile" accept=".pdf"><br>
-  <button onclick="pdfToJpg()">Convert & Download</button>
-</div>
-
-<!-- 4️⃣ JPG Resize / Compress -->
-<div class="card">
-  <h2>JPG Resize / Compress</h2>
-  <input type="file" id="jpgFile" accept="image/jpeg,image/jpg"><br>
-  <label>Width px: <input type="number" id="resizeWidth" value="600"></label><br>
-  <button onclick="resizeJpg()">Resize & Download</button>
-</div>
+<input type="file" id="photoInput" accept="image/*"><br>
+<label>Number of Photos:</label>
+<select id="numPhotos">
+  <option value="2">2</option>
+  <option value="4" selected>4</option>
+  <option value="6">6</option>
+</select><br>
+<button onclick="generateSheet()">Generate Sheet</button>
+<button onclick="downloadSheet()">Download PDF</button>
 
 <canvas id="canvas"></canvas>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
 <script>
+let uploadedImage = null;
 
-// ================= Document Front & Back =================
-function processFrontBack() {
-  const front = document.getElementById("front").files[0];
-  const back = document.getElementById("back").files[0];
-  if(!front || !back){ alert("Dono file select karo"); return; }
+document.getElementById('photoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    uploadedImage = new Image();
+    uploadedImage.onload = function() {
+      drawSheet();
+    }
+    uploadedImage.src = event.target.result;
+  }
+  reader.readAsDataURL(file);
+});
 
-  const img1 = new Image();
-  const img2 = new Image();
-
-  img1.onload = () => {
-    img2.onload = () => {
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-      const width = Math.max(img1.width, img2.width);
-      const height = img1.height + img2.height;
-      canvas.width = width;
-      canvas.height = height;
-
-      ctx.fillStyle="white";
-      ctx.fillRect(0,0,width,height);
-
-      ctx.drawImage(img1,0,0);
-      ctx.drawImage(img2,0,img1.height);
-
-      const link = document.createElement("a");
-      link.download = "document_front_back.jpg";
-      link.href = canvas.toDataURL("image/jpeg",0.95);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-    img2.src = URL.createObjectURL(back);
-  };
-  img1.src = URL.createObjectURL(front);
+function generateSheet() {
+  if(!uploadedImage) { alert('Please upload a photo first!'); return; }
+  drawSheet();
 }
 
-// ================= Passport Size Photo =================
-function generatePassport() {
-  const file = document.getElementById("passportPhoto").files[0];
-  if(!file){ alert("Photo select karo"); return; }
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const w = 295; // 35mm
-    const h = 413; // 45mm
-    canvas.width = w;
-    canvas.height = h;
+function drawSheet() {
+  const num = parseInt(document.getElementById('numPhotos').value);
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  const cols = Math.ceil(Math.sqrt(num));
+  const rows = Math.ceil(num / cols);
+  const photoSize = 200; // Each photo 200x200 px
 
-    ctx.fillStyle="white";
-    ctx.fillRect(0,0,w,h);
+  canvas.width = cols * photoSize + 20;
+  canvas.height = rows * photoSize + 20;
+  
+  ctx.fillStyle = "white";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // draw image center
-    const ratio = Math.min(w/img.width, h/img.height);
-    const nw = img.width*ratio;
-    const nh = img.height*ratio;
-    ctx.drawImage(img, (w-nw)/2, (h-nh)/2, nw, nh);
-
-    const link = document.createElement("a");
-    link.download = "passport_photo.jpg";
-    link.href = canvas.toDataURL("image/jpeg",0.95);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  img.src = URL.createObjectURL(file);
-}
-
-// ================= PDF → JPG =================
-async function pdfToJpg() {
-  const file = document.getElementById("pdfFile").files[0];
-  if(!file){ alert("PDF select karo"); return; }
-
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data:arrayBuffer}).promise;
-  for(let i=1;i<=pdf.numPages;i++){
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({scale:2});
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    await page.render({canvasContext: ctx, viewport: viewport}).promise;
-
-    const link = document.createElement("a");
-    link.download = `page_${i}.jpg`;
-    link.href = canvas.toDataURL("image/jpeg",0.95);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  let count = 0;
+  for(let r=0; r<rows; r++){
+    for(let c=0; c<cols; c++){
+      if(count>=num) break;
+      // Draw the uploaded image centered
+      ctx.drawImage(uploadedImage, 0, 0, uploadedImage.width, uploadedImage.height,
+        c*photoSize + 10, r*photoSize + 10, photoSize, photoSize);
+      count++;
+    }
   }
 }
 
-// ================= JPG Resize / Compress =================
-function resizeJpg() {
-  const file = document.getElementById("jpgFile").files[0];
-  const width = parseInt(document.getElementById("resizeWidth").value);
-  if(!file){ alert("File select karo"); return; }
-  if(!width){ alert("Width enter karo"); return; }
-
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const ratio = width/img.width;
-    canvas.width = width;
-    canvas.height = img.height*ratio;
-
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
-
-    const link = document.createElement("a");
-    link.download = "resized_image.jpg";
-    link.href = canvas.toDataURL("image/jpeg",0.95);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  img.src = URL.createObjectURL(file);
+function downloadSheet() {
+  const canvas = document.getElementById('canvas');
+  const imgData = canvas.toDataURL('image/jpeg', 1.0);
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'px',
+    format: [canvas.width, canvas.height]
+  });
+  pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+  pdf.save('passport_photos.pdf');
 }
-
 </script>
+
 </body>
 </html>
