@@ -1,40 +1,83 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Professional Passport & Aadhaar Photo Tool</title>
-<link rel="stylesheet" href="style.css">
+let cropper;
+let img = document.getElementById('image');
+let canvas = document.getElementById('sheet');
+let ctx = canvas.getContext('2d');
 
-<!-- Cropper.js -->
-<link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css"/>
-<script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
+document.getElementById('upload').addEventListener('change', e => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    img.src = reader.result;
+    img.hidden = false;
+    if (cropper) cropper.destroy();
+    cropper = new Cropper(img, {
+      aspectRatio: 35 / 45, // Passport ratio
+      viewMode: 1,
+      background: false
+    });
+  };
+  reader.readAsDataURL(e.target.files[0]);
+});
 
-<!-- Face API -->
-<script defer src="https://unpkg.com/face-api.js"></script>
-</head>
+/* MANUAL CROP */
+function manualCrop() {
+  alert("Crop box adjust karo aur Generate A4 dabao");
+}
 
-<body>
-<h1>Passport / Aadhaar Photo Maker</h1>
+/* AUTO FACE CROP */
+async function autoCrop() {
+  await faceapi.nets.tinyFaceDetector.loadFromUri(
+    'https://unpkg.com/face-api.js/weights'
+  );
+  const detection = await faceapi.detectSingleFace(
+    img, new faceapi.TinyFaceDetectorOptions()
+  );
+  if (!detection) {
+    alert("Face detect nahi hua");
+    return;
+  }
+  const box = detection.box;
+  cropper.setData({
+    x: box.x - 40,
+    y: box.y - 60,
+    width: box.width + 80,
+    height: box.height + 120
+  });
+}
 
-<input type="file" id="upload" accept="image/*">
+/* A4 SHEET GENERATE */
+function generateA4() {
+  const count = parseInt(document.getElementById('photoCount').value);
+  const photo = cropper.getCroppedCanvas({
+    width: 413,
+    height: 531
+  });
 
-<div class="controls">
-<select id="photoCount">
-  <option value="2">2 Photos</option>
-  <option value="4" selected>4 Photos</option>
-  <option value="6">6 Photos</option>
-  <option value="8">8 Photos</option>
-</select>
+  // A4 size (300 DPI)
+  canvas.width = 2480;
+  canvas.height = 3508;
+  ctx.fillStyle = "white";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-<button onclick="autoCrop()">Auto Crop</button>
-<button onclick="manualCrop()">Manual Crop</button>
-<button onclick="generateA4()">Generate A4 Sheet</button>
-<button onclick="downloadPDF()">Download PDF</button>
-</div>
+  const cols = 2;
+  const rows = Math.ceil(count / cols);
+  const gap = 50;
 
-<img id="image" hidden>
-<canvas id="sheet"></canvas>
+  let x = 200, y = 200;
+  let placed = 0;
 
-<script src="script.js"></script>
-</body>
-</html>
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      if(placed >= count) break;
+      ctx.drawImage(photo, x + c*(photo.width+gap), y + r*(photo.height+gap));
+      placed++;
+    }
+  }
+}
+
+/* PDF DOWNLOAD */
+function downloadPDF() {
+  const link = document.createElement('a');
+  link.download = 'Aadhaar_Passport_Photo_A4.png';
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
